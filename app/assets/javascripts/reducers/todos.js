@@ -1,12 +1,16 @@
-let todos = (state = [], action) => {
-  switch (action.type) {
-    case 'TODO_ADDED':
-      return [...state, action.todo];
-    case 'TODOS_LOADED':
-      return action.todos;
-    default:
-      return state;
-  }
-};
+import createReducer from './base';
+
+function todoAdded (state, action) {
+  return [...state, action.todo];
+}
+
+function todosLoaded (state, action) {
+  return action.todos;
+}
+
+let todos = createReducer({
+  'TODO_ADDED': todoAdded,
+  'TODOS_LOADED': todosLoaded
+}, []);
 
 export default todos;
