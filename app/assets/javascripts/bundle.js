@@ -17,37 +17,21 @@ var _qwest = require('qwest');
 
 var _qwest2 = _interopRequireDefault(_qwest);
 
-var todosLoaded = function todosLoaded(todos) {
-  return {
-    type: 'TODOS_LOADED',
-    todos: todos
-  };
-};
-
-var todoAdded = function todoAdded(todo) {
-  return {
-    type: 'TODO_ADDED',
-    todo: todo
-  };
-};
-
-var todoFailed = function todoFailed(errors) {
-  return {
-    type: 'TODO_FAILED',
-    errors: errors
-  };
-};
-
 var addTodo = function addTodo(content) {
-  return function (dispatch) {
-    return _qwest2['default'].post('/todos.json', { todo: {
+  return {
+    async: true,
+    type: 'CREATE_TODO',
+    repository: {
+      perform: function perform(params) {
+        return _qwest2['default'].post('/todos.json', params);
+      }
+    },
+    payload: {
+      todo: {
         id: _nodeUuid2['default'].v4(),
         content: content
-      } }).then(function (xhr, response) {
-      dispatch(todoAdded(response));
-    })['catch'](function (xhr, status, response) {
-      dispatch(todoFailed(response.errors));
-    });
+      }
+    }
   };
 };
 
@@ -61,10 +45,14 @@ var changeContent = function changeContent(content) {
 
 exports.changeContent = changeContent;
 var fetchTodos = function fetchTodos() {
-  return function (dispatch) {
-    return _qwest2['default'].get('/todos.json').then(function (xhr, response) {
-      dispatch(todosLoaded(response));
-    });
+  return {
+    async: true,
+    type: 'LOAD_TODOS',
+    repository: {
+      perform: function perform() {
+        return _qwest2['default'].get('/todos.json');
+      }
+    }
   };
 };
 exports.fetchTodos = fetchTodos;
@@ -389,7 +377,57 @@ document.addEventListener('DOMContentLoaded', function (event) {
   (0, _reactDom.render)(_routesJsx2['default'], document.getElementById('app'));
 });
 
-},{"./routes.jsx":"/home/farrel/workspace/redux-test/app/assets/javascripts/routes.jsx","react-dom":"/home/farrel/workspace/redux-test/node_modules/react-dom/index.js"}],"/home/farrel/workspace/redux-test/app/assets/javascripts/reducers/base.js":[function(require,module,exports){
+},{"./routes.jsx":"/home/farrel/workspace/redux-test/app/assets/javascripts/routes.jsx","react-dom":"/home/farrel/workspace/redux-test/node_modules/react-dom/index.js"}],"/home/farrel/workspace/redux-test/app/assets/javascripts/middleware/async_call.js":[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+function callSuccess(type, response) {
+  return {
+    type: type + "_SUCCESS",
+    response: response
+  };
+}
+
+function callFailed(type, response) {
+  return {
+    type: type + "_FAILED",
+    response: response
+  };
+}
+
+function callCompleted(type, response) {
+  return {
+    type: type + "_COMPLETED",
+    response: response
+  };
+}
+
+exports["default"] = function (_ref) {
+  var dispatch = _ref.dispatch;
+
+  return function (next) {
+    return function (action) {
+      if (!action.async) {
+        return next(action);
+      }
+
+      return action.repository.perform(action.payload).then(function (xhr, response) {
+        dispatch(callSuccess(action.type, response));
+        dispatch(callCompleted(action.type, response));
+      })["catch"](function (xhr, status, response) {
+        dispatch(callFailed(action.type, response));
+        dispatch(callCompleted(action.type, response));
+      });
+    };
+  };
+};
+
+;
+module.exports = exports["default"];
+
+},{}],"/home/farrel/workspace/redux-test/app/assets/javascripts/reducers/base.js":[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -466,7 +504,7 @@ function todoAdded() {
 function todoFailed(state, action) {
   return {
     content: state.content,
-    error: action.errors.content[0]
+    error: action.response.errors.content[0]
   };
 }
 
@@ -475,8 +513,8 @@ function changeContent(state, action) {
 }
 
 var newTodo = (0, _base2['default'])({
-  TODO_ADDED: todoAdded,
-  TODO_FAILED: todoFailed,
+  CREATE_TODO_SUCCESS: todoAdded,
+  CREATE_TODO_FAILED: todoFailed,
   CHANGE_CONTENT: changeContent
 }, { content: '' });
 
@@ -507,16 +545,16 @@ var _base = require('./base');
 var _base2 = _interopRequireDefault(_base);
 
 function todoAdded(state, action) {
-  return [].concat(_toConsumableArray(state), [action.todo]);
+  return [].concat(_toConsumableArray(state), [action.response]);
 }
 
 function todosLoaded(state, action) {
-  return action.todos;
+  return action.response;
 }
 
 var todos = (0, _base2['default'])({
-  'TODO_ADDED': todoAdded,
-  'TODOS_LOADED': todosLoaded
+  'CREATE_TODO_SUCCESS': todoAdded,
+  'LOAD_TODOS_SUCCESS': todosLoaded
 }, []);
 
 exports['default'] = todos;
@@ -581,12 +619,16 @@ var _reduxLogger = require('redux-logger');
 
 var _reduxLogger2 = _interopRequireDefault(_reduxLogger);
 
-var store = (0, _redux.createStore)(_reducersIndex2['default'], (0, _redux.applyMiddleware)(_reduxThunk2['default'], (0, _reduxLogger2['default'])()));
+var _middlewareAsync_call = require('./middleware/async_call');
+
+var _middlewareAsync_call2 = _interopRequireDefault(_middlewareAsync_call);
+
+var store = (0, _redux.createStore)(_reducersIndex2['default'], (0, _redux.applyMiddleware)(_reduxThunk2['default'], (0, _reduxLogger2['default'])(), _middlewareAsync_call2['default']));
 
 exports['default'] = store;
 module.exports = exports['default'];
 
-},{"./reducers/index":"/home/farrel/workspace/redux-test/app/assets/javascripts/reducers/index.js","redux":"/home/farrel/workspace/redux-test/node_modules/redux/lib/index.js","redux-logger":"/home/farrel/workspace/redux-test/node_modules/redux-logger/lib/index.js","redux-thunk":"/home/farrel/workspace/redux-test/node_modules/redux-thunk/lib/index.js"}],"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/browser-resolve/empty.js":[function(require,module,exports){
+},{"./middleware/async_call":"/home/farrel/workspace/redux-test/app/assets/javascripts/middleware/async_call.js","./reducers/index":"/home/farrel/workspace/redux-test/app/assets/javascripts/reducers/index.js","redux":"/home/farrel/workspace/redux-test/node_modules/redux/lib/index.js","redux-logger":"/home/farrel/workspace/redux-test/node_modules/redux-logger/lib/index.js","redux-thunk":"/home/farrel/workspace/redux-test/node_modules/redux-thunk/lib/index.js"}],"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/browser-resolve/empty.js":[function(require,module,exports){
 
 },{}],"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/buffer/index.js":[function(require,module,exports){
 (function (global){
@@ -13270,7 +13312,7 @@ function shr64_lo(ah, al, num) {
 exports.shr64_lo = shr64_lo;
 
 },{"inherits":"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/inherits/inherits_browser.js"}],"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/browserify-sign/node_modules/elliptic/package.json":[function(require,module,exports){
-module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports={
+module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports={
   "name": "elliptic",
   "version": "6.2.3",
   "description": "EC cryptography",
@@ -13326,7 +13368,7 @@ module.exports=module.exports=module.exports=module.exports=module.exports=modul
 }
 
 },{}],"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/browserify-sign/node_modules/parse-asn1/aesid.json":[function(require,module,exports){
-module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports={"2.16.840.1.101.3.4.1.1": "aes-128-ecb",
+module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports={"2.16.840.1.101.3.4.1.1": "aes-128-ecb",
 "2.16.840.1.101.3.4.1.2": "aes-128-cbc",
 "2.16.840.1.101.3.4.1.3": "aes-128-ofb",
 "2.16.840.1.101.3.4.1.4": "aes-128-cfb",
@@ -15804,7 +15846,7 @@ arguments[4]["/home/farrel/workspace/redux-test/node_modules/browserify/node_mod
 },{"../hash":"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/create-ecdh/node_modules/elliptic/node_modules/hash.js/lib/hash.js"}],"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/create-ecdh/node_modules/elliptic/node_modules/hash.js/lib/hash/utils.js":[function(require,module,exports){
 arguments[4]["/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/browserify-sign/node_modules/elliptic/node_modules/hash.js/lib/hash/utils.js"][0].apply(exports,arguments)
 },{"inherits":"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/inherits/inherits_browser.js"}],"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/create-ecdh/node_modules/elliptic/package.json":[function(require,module,exports){
-module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=arguments[4]["/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/browserify-sign/node_modules/elliptic/package.json"][0].apply(exports,arguments)
+module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=arguments[4]["/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/browserify-sign/node_modules/elliptic/package.json"][0].apply(exports,arguments)
 },{}],"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/create-hash/browser.js":[function(require,module,exports){
 (function (Buffer){
 'use strict';
@@ -17471,7 +17513,7 @@ function findPrime(bits, gen) {
 }
 
 },{"bn.js":"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/diffie-hellman/node_modules/bn.js/lib/bn.js","miller-rabin":"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/diffie-hellman/node_modules/miller-rabin/lib/mr.js","randombytes":"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/randombytes/browser.js"}],"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/diffie-hellman/lib/primes.json":[function(require,module,exports){
-module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports={
+module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports={
     "modp1": {
         "gen": "02",
         "prime": "ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a63a3620ffffffffffffffff"
@@ -17743,7 +17785,7 @@ arguments[4]["/home/farrel/workspace/redux-test/node_modules/browserify/node_mod
 },{}],"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/public-encrypt/node_modules/browserify-rsa/index.js":[function(require,module,exports){
 arguments[4]["/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/browserify-sign/node_modules/browserify-rsa/index.js"][0].apply(exports,arguments)
 },{"bn.js":"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/public-encrypt/node_modules/bn.js/lib/bn.js","buffer":"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/buffer/index.js","randombytes":"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/randombytes/browser.js"}],"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/public-encrypt/node_modules/parse-asn1/aesid.json":[function(require,module,exports){
-module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=arguments[4]["/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/browserify-sign/node_modules/parse-asn1/aesid.json"][0].apply(exports,arguments)
+module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=arguments[4]["/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/browserify-sign/node_modules/parse-asn1/aesid.json"][0].apply(exports,arguments)
 },{}],"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/public-encrypt/node_modules/parse-asn1/asn1.js":[function(require,module,exports){
 arguments[4]["/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/browserify-sign/node_modules/parse-asn1/asn1.js"][0].apply(exports,arguments)
 },{"asn1.js":"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/public-encrypt/node_modules/parse-asn1/node_modules/asn1.js/lib/asn1.js"}],"/home/farrel/workspace/redux-test/node_modules/browserify/node_modules/crypto-browserify/node_modules/public-encrypt/node_modules/parse-asn1/fixProc.js":[function(require,module,exports){

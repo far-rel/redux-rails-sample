@@ -1,16 +1,16 @@
 import createReducer from './base';
 
 function todoAdded (state, action) {
-  return [...state, action.todo];
+  return [...state, action.response];
 }
 
 function todosLoaded (state, action) {
-  return action.todos;
+  return action.response;
 }
 
 let todos = createReducer({
-  'TODO_ADDED': todoAdded,
-  'TODOS_LOADED': todosLoaded
+  'CREATE_TODO_SUCCESS': todoAdded,
+  'LOAD_TODOS_SUCCESS': todosLoaded
 }, []);
 
 export default todos;

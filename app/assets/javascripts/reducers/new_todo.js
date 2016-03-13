@@ -7,7 +7,7 @@ function todoAdded () {
 function todoFailed (state, action) {
   return {
     content: state.content,
-    error: action.errors.content[0]
+    error: action.response.errors.content[0]
   };
 }
 
@@ -16,8 +16,8 @@ function changeContent (state, action) {
 }
 
 let newTodo = createReducer({
-  TODO_ADDED: todoAdded,
-  TODO_FAILED: todoFailed,
+  CREATE_TODO_SUCCESS: todoAdded,
+  CREATE_TODO_FAILED: todoFailed,
   CHANGE_CONTENT: changeContent
 }, {content: ''});
 
