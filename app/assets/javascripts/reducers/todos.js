@@ -1,16 +1,20 @@
-import createReducer from './base';
+import Reducer from './base';
 
-function todoAdded (state, action) {
-  return [...state, action.response];
+class TodosReducer extends Reducer {
+
+  constructor () {
+    super();
+    this.initialState = [];
+  }
+
+  onCreateTodoSuccess (state, action) {
+    return [...state, action.response];
+  }
+
+  onLoadTodosSuccess (state, action) {
+    return action.response;
+  }
+
 }
 
-function todosLoaded (state, action) {
-  return action.response;
-}
-
-let todos = createReducer({
-  'CREATE_TODO_SUCCESS': todoAdded,
-  'LOAD_TODOS_SUCCESS': todosLoaded
-}, []);
-
-export default todos;
+export default (new TodosReducer()).reducerFunction();

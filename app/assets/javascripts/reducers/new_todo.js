@@ -1,24 +1,26 @@
-import createReducer from './base';
+import Reducer from './base';
 
-function todoAdded () {
-  return {content: ''};
+class NewTodoReducer extends Reducer {
+
+  constructor () {
+    super();
+    this.initialState = {content: ''};
+  }
+
+  onCreateTodoSuccess (state, action) {
+    return {content: ''};
+  }
+
+  onCreateTodoFailed (state, action) {
+    return {
+      content: state.content,
+      error: action.response.errors.content[0]
+    };
+  }
+
+  onChangeContent (state, action) {
+    return {content: action.content};
+  }
 }
 
-function todoFailed (state, action) {
-  return {
-    content: state.content,
-    error: action.response.errors.content[0]
-  };
-}
-
-function changeContent (state, action) {
-  return {content: action.content};
-}
-
-let newTodo = createReducer({
-  CREATE_TODO_SUCCESS: todoAdded,
-  CREATE_TODO_FAILED: todoFailed,
-  CHANGE_CONTENT: changeContent
-}, {content: ''});
-
-export default newTodo;
+export default (new NewTodoReducer()).reducerFunction();
