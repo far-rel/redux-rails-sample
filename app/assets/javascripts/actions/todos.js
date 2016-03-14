@@ -1,20 +1,14 @@
 import uuid from 'node-uuid';
-import qwest from 'qwest';
+import { Todos } from '../repositories';
 
 export const addTodo = (content) => {
   return {
     async: true,
     type: 'CREATE_TODO',
-    repository: {
-      perform: (params) => {
-        return qwest.post('/todos.json', params);
-      }
-    },
+    repository: Todos.create,
     payload: {
-      todo: {
-        id: uuid.v4(),
-        content
-      }
+      id: uuid.v4(),
+      content
     }
   };
 };
@@ -30,10 +24,6 @@ export const fetchTodos = () => {
   return {
     async: true,
     type: 'LOAD_TODOS',
-    repository: {
-      perform: () => {
-        return qwest.get('/todos.json');
-      }
-    }
+    repository: Todos.load
   };
 };
